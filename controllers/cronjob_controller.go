@@ -18,22 +18,27 @@ package controllers
 
 import (
 	"context"
-	"fmt"
-	"sort"
 	"time"
 
-	"github.com/robfig/cron"
 	kbatch "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	ref "k8s.io/client-go/tools/reference"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	batchv1 "tutorial.kubebuilder.io/project/api/v1"
 )
+
+//clock
+type realClock struct{}
+
+func (_ realClock) Now() time.Time {
+	return time.Now()
+}
+
+type Clock interface {
+	Now() time.Time
+}
 
 // CronJobReconciler reconciles a CronJob object
 type CronJobReconciler struct {
@@ -58,21 +63,36 @@ type CronJobReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.2/pkg/reconcile
 
-var cronJob batchv1.CronJob
-if err := r.get
-
+var (
+	scheduledTimeAnnoatation = "batch.tutorial.kubebuilder.io/scheduled-at"
+)
 
 func (r *CronJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
 	// TODO(user): your logic here
 
+	var cronJob batchv1.CronJob
+	if err := r.Get(ctx, req.NamespacedName, &cronJob); err != nil {
+		log.Log.Error(err, "unable to fetch cronjob")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// get all list of jobs
+	var childJobs kbatch.JobList
+	if err := r.List(ctx, &childJobs, client.InNamespace(req.Namespace), client.MatchingFields{jobOwnerKey: req.Name}); err != nil {
+		log.Log.Error(err, "unable to list chid jobs")
+		return ctrl.Result{}, err
+	}
+
+	var activeJobs []*kbatch.Job
+	var sucessfulJobs []*kbatch.Job
+	var failedJobs []*kbatch.Job
+	var mostRecentTime *time.Time
+
 	return ctrl.Result{}, nil
 }
 
-var (
-	scheduledTimeAnnoatation = "batch.tutorial.kubebuilder.io/scheduled-at"
-)
 // SetupWithManager sets up the controller with the Manager.
 func (r *CronJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).

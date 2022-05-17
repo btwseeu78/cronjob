@@ -1,9 +1,14 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/home/redhat/project'
+ 
+mkdir -p /home/redhat/project/bin
+ 
 GOBIN=/home/redhat/project/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0
  
 /home/redhat/project/bin/controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
 go fmt ./...
 go vet ./...
-go build -o bin/manager main.go
  
+go build -o bin/manager main.go
 make: Leaving directory '/home/redhat/project'
  
